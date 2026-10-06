@@ -140,8 +140,9 @@ for _ in 1 2 3 4 5 6 7 8; do lpstat -r 2>/dev/null | grep -q 'is running' && bre
 have avahi-daemon && systemctl enable --now avahi-daemon.service 2>/dev/null
 
 # --- 3. Плагин HP ------------------------------------------------------
+HPSETUP_TO=300
 PLUGIN_DONE=0
-[ "$NOPLUGIN" -eq 1 ] && PLUGIN_DONE=1   # пропуск плагина
+[ "$NOPLUGIN" -eq 1 ] && { PLUGIN_DONE=1; HPSETUP_TO=90; }   # без плагина hp-setup часто виснет -> короткий таймаут
 install_plugin() {
     [ "$HPLIP_OK" -eq 1 ] && [ "$PLUGIN_DONE" -eq 0 ] || return 1
     log "Скачивание и установка плагина HP (нужен интернет)..."
@@ -212,11 +213,11 @@ m_hp_setup() {   # $1 имя, $2 URI
     before=$(queues)
     if [[ "$2" == *"ip="* ]]; then arg=$(echo "$2" | sed -E 's/.*ip=([^&]+).*/\1/'); else arg="-b usb"; fi
     # shellcheck disable=SC2086
-    yes | timeout 300 hp-setup -i -a $arg >"$WORK/hpsetup.log" 2>&1
+    yes | timeout "$HPSETUP_TO" hp-setup -i -a $arg >"$WORK/hpsetup.log" 2>&1
     after=$(queues)
     if [ "$before" = "$after" ] && grep -qi 'plugin' "$WORK/hpsetup.log" && install_plugin; then
         # shellcheck disable=SC2086
-        yes | timeout 300 hp-setup -i -a $arg >"$WORK/hpsetup.log" 2>&1
+        yes | timeout "$HPSETUP_TO" hp-setup -i -a $arg >"$WORK/hpsetup.log" 2>&1
         after=$(queues)
     fi
     [ "$before" != "$after" ] || return 1
