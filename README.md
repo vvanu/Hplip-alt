@@ -26,3 +26,16 @@ sudo ./hplip-alt-setup.sh --default  # + сделать принтер по ум
   IPP Everywhere → общий HP-драйвер → универсальный PCL/raw. Каждый способ пробуется и с альтернативными URI (usb/dnssd/ipp).
 - Очередь проверяется на «disabled», после тестовой печати — повторно.
 - Если HPLIP не установился, печать всё равно настраивается через CUPS.
+
+## Модели, которым нужен плагин HP (например, LaserJet P1005/P1006/P1505/P1566)
+
+Если печать падает с `Print job failed - required plug-in not found`, нужен плагин HP **той же версии, что и установленный HPLIP**
+(`rpm -q hplip`). Если автоскачивание не работает (нет доступа к серверам HP), скачайте `hplip-<версия>-plugin.run` и
+`hplip-<версия>-plugin.run.asc` вручную (openprinting.org или sourceforge.net/projects/hplip/files/hplip/<версия>/),
+положите в одну папку (не переименовывая) и от root выполните:
+
+```
+hp-plugin -i -p /путь/к/папке
+```
+
+Проверка: `ls /usr/share/hplip/data/firmware/ | grep -i <модель>` и `cat /var/lib/hp/hplip.state`.
