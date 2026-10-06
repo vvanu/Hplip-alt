@@ -77,10 +77,16 @@ fi
 if have apt-cache; then
     EXTRA_PKGS=$(apt-cache search -n hplip 2>/dev/null | awk '{print $1}' \
         | grep -Ev 'debuginfo|devel|doc|gui|qt|^lib' | tr '\n' ' ')
-    # shellcheck disable=SC2086
-    [ -n "$EXTRA_PKGS" ] && apt-get install -y $EXTRA_PKGS >/dev/null 2>&1
+    if [ -n "$EXTRA_PKGS" ]; then
+        log "Доустановка пакетов HPLIP из репозитория: $EXTRA_PKGS"
+        # shellcheck disable=SC2086
+        apt-get install -y $EXTRA_PKGS </dev/null || warn "Часть пакетов hplip не установилась (не критично)."
+    fi
 fi
-[ "$GUI" -eq 1 ] && install_pkgs hplip-gui >/dev/null 2>&1
+if [ "$GUI" -eq 1 ]; then
+    log "Установка hplip-gui (можно пропустить флагом --no-gui)..."
+    install_pkgs hplip-gui </dev/null || warn "hplip-gui не установлен (не критично)."
+fi
 
 # fallback 1: исправление зависимостей и повтор
 if ! have hp-setup; then
