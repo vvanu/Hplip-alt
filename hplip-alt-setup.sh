@@ -143,8 +143,8 @@ install_plugin() {
     [ "$HPLIP_OK" -eq 1 ] && [ "$PLUGIN_DONE" -eq 0 ] || return 1
     log "Скачивание и установка плагина HP (нужен интернет)..."
     # плагин интерактивно спрашивает согласие с лицензией -> отвечаем «y»
-    if yes | timeout 600 hp-plugin -i --required >"$WORK/plugin.log" 2>&1 \
-       || yes | timeout 600 hp-plugin -i >"$WORK/plugin.log" 2>&1; then
+    if yes | timeout 180 hp-plugin -i --required >"$WORK/plugin.log" 2>&1 \
+       || yes | timeout 180 hp-plugin -i >"$WORK/plugin.log" 2>&1; then
         PLUGIN_DONE=1; log "Плагин установлен."; return 0
     fi
     warn "Плагин не установился: $(tail -n 3 "$WORK/plugin.log" | tr '\n' ' ')"
@@ -224,6 +224,17 @@ m_hp_setup() {   # $1 имя, $2 URI
 m_hp_ppd()     { local p; p=$(find_ppd "$2"); [ -n "$p" ] && lpadmin -p "$1" -E -v "$2" -m "$p" 2>/dev/null && healthy "$1"; }
 # способ 3: IPP Everywhere (драйверов не нужно, современные принтеры)
 m_everywhere() { lpadmin -p "$1" -E -v "$2" -m everywhere 2>/dev/null && healthy "$1"; }
+# способ 3b: драйверы foomatic/foo2zjs (для P1005/P1505/P1566 и др. моделей, где HPLIP требует плагин)
+m_foomatic() {
+    local p
+    if [ -z "${FOOMATIC_TRIED:-}" ]; then
+        FOOMATIC_TRIED=1
+        log "Установка драйверов foo2zjs/foomatic (запасной вариант)..."
+        install_pkgs foo2zjs foomatic-db foomatic-db-engine foomatic-filters foomatic-db-ppds </dev/null >/dev/null 2>&1
+    fi
+    p=$(find_ppd "$2")
+    [ -n "$p" ] && lpadmin -p "$1" -E -v "$2" -m "$p" 2>/dev/null && healthy "$1"
+}
 # способ 4: любой подходящий HP-драйвер
 m_hp_generic() {
     local p
@@ -248,7 +259,7 @@ while read -r URI; do
     if exists "$NAME"; then log "Принтер $NAME уже настроен."; FIRST=${FIRST:-$NAME}; continue; fi
     DONE=0; NEWQ=""
     # Для каждого способа пробуем исходный URI, а затем альтернативные (usb://, dnssd://, ipp://)
-    for method in m_hp_setup m_hp_ppd m_everywhere m_hp_generic m_generic; do
+    for method in m_hp_setup m_hp_ppd m_foomatic m_everywhere m_hp_generic m_generic; do
         for U in "$URI" $ALT_URIS; do
             [ "$method" = m_hp_setup ] && [ "$U" != "$URI" ] && continue
             log "Настройка $NAME ($U): $method"
