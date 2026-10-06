@@ -5,6 +5,7 @@
 #   sudo ./hplip-alt-setup.sh [параметры]
 #     --plugin       сразу поставить проприетарный плагин HP (иначе он ставится
 #                    автоматически, только если без него настройка не удалась)
+#     --no-plugin    не пытаться скачивать плагин HP (если нет доступа к серверам HP)
 #     --ip АДРЕС     настроить сетевой принтер по IP (в дополнение к найденным)
 #     --default      сделать принтер по умолчанию
 #     --test         напечатать тестовую страницу без вопроса
@@ -15,15 +16,16 @@ set -u
 
 HPLIP_VER="${HPLIP_VER:-3.24.4}"   # версия для запасной сборки из исходников
 LOG=/var/log/hplip-alt-setup.log
-PLUGIN=0; DEFAULT=0; TEST=0; GUI=1; EXTRA_IP=""
+PLUGIN=0; NOPLUGIN=0; DEFAULT=0; TEST=0; GUI=1; EXTRA_IP=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --plugin)  PLUGIN=1 ;;
+        --no-plugin) NOPLUGIN=1 ;;
         --default) DEFAULT=1 ;;
         --test)    TEST=1 ;;
         --no-gui)  GUI=0 ;;
         --ip)      shift; EXTRA_IP="${1:-}" ;;
-        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
         *) echo "Неизвестный параметр: $1"; exit 1 ;;
     esac
     shift
@@ -139,6 +141,7 @@ have avahi-daemon && systemctl enable --now avahi-daemon.service 2>/dev/null
 
 # --- 3. Плагин HP ------------------------------------------------------
 PLUGIN_DONE=0
+[ "$NOPLUGIN" -eq 1 ] && PLUGIN_DONE=1   # пропуск плагина
 install_plugin() {
     [ "$HPLIP_OK" -eq 1 ] && [ "$PLUGIN_DONE" -eq 0 ] || return 1
     log "Скачивание и установка плагина HP (нужен интернет)..."
