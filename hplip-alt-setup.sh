@@ -211,6 +211,7 @@ fix_smart_install() {
     if [ -z "$dev" ]; then
         dev=$(dmesg 2>/dev/null | tail -n 80 | grep -i 'smart install' >/dev/null && ls /dev/sr0 2>/dev/null | head -n1)
     fi
+    mkdir -p /etc/udev/rules.d 2>/dev/null
     if [ ! -f /etc/udev/rules.d/99-hp-smartinstall.rules ]; then
         cat > /etc/udev/rules.d/99-hp-smartinstall.rules <<'RULE'
 # HP Smart Install: автоматически "извлекать" виртуальный CD принтера, чтобы он переключился в режим печати
