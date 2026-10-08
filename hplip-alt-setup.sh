@@ -203,6 +203,28 @@ find_uris() {
     [ -z "$u" ] && u=$(lpinfo -v 2>/dev/null | awk '$2 ~ /^(usb|dnssd|ipp|socket):\// && tolower($2) ~ /hp|hewlett/ {print $2}' | sort -u)
     echo "$u"
 }
+# Некоторые модели (P1102, P1566 и др.) после включения показываются как виртуальный CD-диск "HP Smart Install"
+# и не определяются как принтер. Выбрасываем этот "диск" и ставим правило udev, чтобы так было каждый раз.
+fix_smart_install() {
+    local dev
+    dev=$(lsblk -dno NAME,VENDOR,MODEL 2>/dev/null | awk 'tolower($0) ~ /smart.?install/ {print "/dev/"$1; exit}')
+    if [ -z "$dev" ]; then
+        dev=$(dmesg 2>/dev/null | tail -n 80 | grep -i 'smart install' >/dev/null && ls /dev/sr0 2>/dev/null | head -n1)
+    fi
+    if [ ! -f /etc/udev/rules.d/99-hp-smartinstall.rules ]; then
+        cat > /etc/udev/rules.d/99-hp-smartinstall.rules <<'RULE'
+# HP Smart Install: автоматически "извлекать" виртуальный CD принтера, чтобы он переключился в режим печати
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="sr[0-9]*", ENV{ID_VENDOR}=="HP", ENV{ID_MODEL}=="Smart_Install", RUN+="/usr/bin/eject /dev/%k"
+RULE
+        have udevadm && udevadm control --reload-rules 2>/dev/null
+    fi
+    [ -n "$dev" ] || return 0
+    warn "Принтер в режиме HP Smart Install (виртуальный CD $dev). Переключаю в режим печати..."
+    have eject || install_pkgs eject >/dev/null 2>&1
+    eject "$dev" 2>/dev/null
+    spin "Ожидание переключения принтера в режим печати" sleep 12
+}
+fix_smart_install
 log "Убедитесь, что принтер включён и подключён."
 { lsusb 2>/dev/null | grep -i 'hewlett\|hp' || warn "В lsusb нет устройств HP (для сетевого принтера это нормально)."; } 2>&1 | tee -a "$LOG" >&3
 URIS=""
